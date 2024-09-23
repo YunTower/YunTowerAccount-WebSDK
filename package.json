@@ -1,6 +1,6 @@
 {
-  "name": "yuntower-account-js-sdk",
-  "description": "YunTower Account JS SDK",
+  "name": "yuntower-account-web-sdk",
+  "description": "YunTower Account Web SDK",
   "version": "0.0.1",
   "private": false,
   "author": "fish",
