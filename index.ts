@@ -97,3 +97,5 @@ class YunTowerAccountSDK {
     }
   }
 }
+
+export default YunTowerAccountSDK;
