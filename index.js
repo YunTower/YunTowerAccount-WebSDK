@@ -4,11 +4,11 @@ var YunTowerAccountSDK = /** @class */ (function () {
         if (!appid || !scope) {
             console.error('[YunTowerAccountSDK] 参数缺失');
         }
-        if (!['window'].includes(type)) {
+        if (!['window', 'redirect'].includes(type)) {
             console.error('[YunTowerAccountSDK] [type]参数错误');
         }
         if (!['user_profile'].includes(scope)) {
-            console.error('[YunTowerAccountSDK] scope参数错误，目前只支持[user_profile]');
+            console.error('[YunTowerAccountSDK] [scope]参数错误，目前只支持[user_profile]');
         }
         this.auth_status = false;
         this.config = {
@@ -23,41 +23,31 @@ var YunTowerAccountSDK = /** @class */ (function () {
     }
     /**
      * 开启授权窗口
-     * @param {boolean} newPage - 是否在新页面中打开授权页（type需要为redirect）
      * @param {*} callback
      */
-    YunTowerAccountSDK.prototype.openAuthWindow = function (newPage, callback) {
+    YunTowerAccountSDK.prototype.openAuthWindow = function (callback) {
         var _this = this;
-        if (newPage) {
-            if (this.config.type != 'redirect') {
-                console.error('[YunTowerAccountSDK] type为window时，不支持在新页面打开');
-            }
-            window.open("".concat(this.config.auth, "/auth/app?type=").concat(this.config.type, "&appid=").concat(this.config.appid, "&redirect_url=").concat(this.config.redirect_url, "&scope=").concat(this.config.scope, "&state=").concat(this.config.state));
-            return false;
-        }
         var child = window.open("".concat(this.config.auth, "/auth/app?type=").concat(this.config.type, "&appid=").concat(this.config.appid, "&redirect_url=").concat(this.config.redirect_url, "&scope=").concat(this.config.scope, "&state=").concat(this.config.state), "_blank", "width=500,height=600");
         // 监听来自子页面的消息
         window.addEventListener("message", function (event) {
-            var _a, _b;
+            var _a, _b, _c, _d;
             var origin = event.origin.replace(/^https?:\/\//, "");
             if (!_this.config.origin_white_list.includes(origin))
                 return;
             // 授权成功
             if (((_a = event.data) === null || _a === void 0 ? void 0 : _a.action) === "status") {
-                if (event.data.status == 'noLogin')
-                    return false;
                 if (((_b = event.data) === null || _b === void 0 ? void 0 : _b.status) === "success") {
                     _this.auth_status = true;
                     callback({
                         event: "auth",
-                        status: true,
+                        status: (_c = event.data) === null || _c === void 0 ? void 0 : _c.status,
                         data: JSON.parse(event.data.data),
                     });
                 }
                 else {
                     callback({
                         event: "auth",
-                        status: false,
+                        status: (_d = event.data) === null || _d === void 0 ? void 0 : _d.status,
                         msg: event.data.msg,
                     });
                 }
@@ -70,7 +60,7 @@ var YunTowerAccountSDK = /** @class */ (function () {
                     clearInterval(timer_1);
                     callback({
                         event: "closed",
-                        status: true,
+                        status: 'success',
                     });
                 }
                 child.postMessage({ action: "status" }, "*");

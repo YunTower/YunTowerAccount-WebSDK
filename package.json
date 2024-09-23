@@ -1,5 +1,15 @@
 {
+  "name": "yuntower-account-js-sdk",
+  "description": "YunTower Account JS SDK",
+  "version": "0.0.1",
+  "private": false,
+  "author": "fish",
+  "license": "Apache-2.0",
   "dependencies": {
     "typescript": "^5.5.4"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
