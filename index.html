@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+
+    <script src="http://cdn.yuntower.cn/account/sdk/js/account.min.js"></script>
+    <script>
+        const sdk = new YunTowerAccountSDK({
+            type: 'window',
+            appid: "56523416231031456",
+            // redirect_url: '//127.0.0.1:5500/111.html',
+            scope: "user_profile",
+            state: new Date().getTime()
+        });
+
+        sdk.openAuthWindow(false, async (event) => {
+            if (event.event != 'auth' || event.status != true) return false;
+            console.log(event)
+        })
+    </script>
+</body>
+
+</html>
