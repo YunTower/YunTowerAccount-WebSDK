@@ -26,7 +26,7 @@ class YunTowerAccountSDK {
       console.error('[YunTowerAccountSDK] 参数缺失');
     }
 
-    if (!['window','redirect'].includes(type)) {
+    if (!['window', 'redirect'].includes(type)) {
       console.error('[YunTowerAccountSDK] [type]参数错误');
     }
 
@@ -50,15 +50,25 @@ class YunTowerAccountSDK {
    * 开启授权窗口
    * @param {*} callback
    */
-  openAuthWindow(callback: (arg0: { event: string; status: 'success' | 'failed' | 'noLogin'; data?: any; msg?: string; }) => void) {
+  openAuthWindow(callback: (arg0: { event: string; status: 'success' | 'failed' | 'error' | 'noLogin'; data?: any; msg?: string; }) => void) {
+    const auth_path = `${this.config.auth}/auth/app?type=${this.config.type}&appid=${this.config.appid}&redirect_url=${this.config.redirect_url}&scope=${this.config.scope}&state=${this.config.state}`;
+    
+    if (this.config.type == 'redirect') {
+      window.location.href = auth_path;
+      return false;
+    }
+
     let child = window.open(
-      `${this.config.auth}/auth/app?type=${this.config.type}&appid=${this.config.appid}&redirect_url=${this.config.redirect_url}&scope=${this.config.scope}&state=${this.config.state}`,
+      auth_path,
       "_blank",
       "width=500,height=600"
     );
 
+
     // 监听来自子页面的消息
     window.addEventListener("message", (event) => {
+      if (this.config.type != 'window') callback({ event: 'error', status: 'error', msg: '仅[type]为[window]时支持回调方法' });
+
       const origin = event.origin.replace(/^https?:\/\//, "");
 
       if (!this.config.origin_white_list.includes(origin)) return;
@@ -82,6 +92,7 @@ class YunTowerAccountSDK {
         child?.close();
       }
     });
+
 
     if (child && !child.closed) {
       const timer = setInterval(() => {
