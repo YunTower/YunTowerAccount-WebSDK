@@ -6,20 +6,21 @@ class YunTowerAccountSDK {
     type: 'window' | 'redirect';
     appid: string;
     scope: string | '';
-    redirect_url: string;
+    redirect_url: null | string;
     state: null | string;
   };
+
   constructor({
     type,
     appid,
-    redirect_url,
+    redirect_url = null,
     state = null,
-    scope = 'user_profile',
+    scope = 'user_profile'
   }: {
     type: 'window' | 'redirect';
     appid: string;
     scope: string | 'user_profile';
-    redirect_url: string;
+    redirect_url?: null | string;
     state?: null | string;
   }) {
     if (!appid || !scope) {
@@ -42,7 +43,7 @@ class YunTowerAccountSDK {
       appid,
       scope,
       redirect_url,
-      state,
+      state
     };
   }
 
@@ -50,9 +51,14 @@ class YunTowerAccountSDK {
    * 开启授权窗口
    * @param {*} callback
    */
-  openAuthWindow(callback: (arg0: { event: string; status: 'success' | 'failed' | 'error' | 'noLogin'; data?: any; msg?: string; }) => void) {
+  openAuthWindow(callback: (arg0: {
+    event: string;
+    status: 'success' | 'failed' | 'error' | 'noLogin';
+    data?: any;
+    msg?: string;
+  }) => void) {
     const auth_path = `${this.config.auth}/auth/app?type=${this.config.type}&appid=${this.config.appid}&redirect_url=${this.config.redirect_url}&scope=${this.config.scope}&state=${this.config.state}`;
-    
+
     if (this.config.type == 'redirect') {
       window.location.href = auth_path;
       return false;
@@ -60,33 +66,37 @@ class YunTowerAccountSDK {
 
     let child = window.open(
       auth_path,
-      "_blank",
-      "width=500,height=600"
+      '_blank',
+      'width=500,height=600'
     );
 
 
     // 监听来自子页面的消息
-    window.addEventListener("message", (event) => {
-      if (this.config.type != 'window') callback({ event: 'error', status: 'error', msg: '仅[type]为[window]时支持回调方法' });
+    window.addEventListener('message', (event) => {
+      if (this.config.type != 'window') callback({
+        event: 'error',
+        status: 'error',
+        msg: '仅[type]为[window]时支持回调方法'
+      });
 
-      const origin = event.origin.replace(/^https?:\/\//, "");
+      const origin = event.origin.replace(/^https?:\/\//, '');
 
       if (!this.config.origin_white_list.includes(origin)) return;
 
       // 授权成功
-      if (event.data?.action === "status") {
-        if (event.data?.status === "success") {
+      if (event.data?.action === 'status') {
+        if (event.data?.status === 'success') {
           this.auth_status = true;
           callback({
-            event: "auth",
+            event: 'auth',
             status: event.data?.status,
-            data: JSON.parse(event.data.data),
+            data: JSON.parse(event.data.data)
           });
         } else {
           callback({
-            event: "auth",
+            event: 'auth',
             status: event.data?.status,
-            msg: event.data.msg,
+            msg: event.data.msg
           });
         }
         child?.close();
@@ -99,11 +109,11 @@ class YunTowerAccountSDK {
         if (child.closed) {
           clearInterval(timer);
           callback({
-            event: "closed",
-            status: 'success',
+            event: 'closed',
+            status: 'success'
           });
         }
-        child.postMessage({ action: "status" }, "*");
+        child.postMessage({ action: 'status' }, '*');
       }, 3000);
     }
   }
