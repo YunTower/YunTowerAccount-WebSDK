@@ -38,7 +38,7 @@ class YunTowerAccountSDK {
     this.auth_status = false;
     this.config = {
       auth: 'https://account.yuntower.cn',
-      origin_white_list: ['account.yuntower.cn', 'localhost:3000'],
+      origin_white_list: ['account.yuntower.cn'],
       type,
       appid,
       scope,
@@ -72,7 +72,7 @@ class YunTowerAccountSDK {
 
 
     // 监听来自子页面的消息
-    window.addEventListener('message', (event) => {
+    const messageListener = (event: MessageEvent) => {
       if (this.config.type != 'window') callback({
         event: 'error',
         status: 'error',
@@ -85,6 +85,7 @@ class YunTowerAccountSDK {
 
       // 授权成功
       if (event.data?.action === 'status') {
+        window.removeEventListener('message', messageListener);
         if (event.data?.status === 'success') {
           this.auth_status = true;
           callback({
@@ -101,7 +102,9 @@ class YunTowerAccountSDK {
         }
         child?.close();
       }
-    });
+    };
+
+    window.addEventListener('message', messageListener);
 
 
     if (child && !child.closed) {
