@@ -3,7 +3,7 @@ class YunTowerAccountSDK {
   config: {
     auth: string,
     origin_white_list: string[];
-    type: 'window' | 'redirect';
+    type: 'window' | 'redirect' | 'iframe';
     appid: string;
     scope: string | '';
     redirect_url: null | string;
@@ -17,7 +17,7 @@ class YunTowerAccountSDK {
     state = null,
     scope = 'user_profile'
   }: {
-    type: 'window' | 'redirect';
+    type: 'window' | 'redirect' | 'iframe';
     appid: string;
     scope: string | 'user_profile';
     redirect_url?: null | string;
@@ -27,7 +27,7 @@ class YunTowerAccountSDK {
       console.error('[YunTowerAccountSDK] 参数缺失');
     }
 
-    if (!['window', 'redirect'].includes(type)) {
+    if (!['window', 'redirect', 'iframe'].includes(type)) {
       console.error('[YunTowerAccountSDK] [type]参数错误');
     }
 
@@ -48,12 +48,73 @@ class YunTowerAccountSDK {
   }
 
   /**
+   * 加载授权窗口
+   * 
+   * @param {string} id 目标元素的ID
+   * @param {string} style 样式
+   */
+  loadAuthWindow(id: string, style: string = '', callback: (arg0: {
+    event: string;
+    status: 'success' | 'failed' | 'error' | 'noLogin' | 'denied';
+    data?: any;
+    msg?: string;
+  }) => void) {
+    const auth_path = `${this.config.auth}/auth/app?type=${this.config.type}&appid=${this.config.appid}&redirect_url=${this.config.redirect_url}&scope=${this.config.scope}&state=${this.config.state}`;
+    const iframe = document.getElementById(id);
+    if (!iframe) {
+      console.error('[YunTowerAccountSDK] 未找到id元素');
+      return;
+    }
+
+    if (this.config.type !== 'iframe') {
+      console.error('[YunTowerAccountSDK] type 参数错误，仅支持[iframe]类型');
+      return;
+    }
+
+    if (style === '') {
+      style = "height: 366px; width: 400px; border: unset; border-radius: 5px"
+    }
+
+
+    iframe.setAttribute('src', auth_path);
+    iframe.setAttribute('style', style);
+
+    // 监听来自子页面的消息
+    const messageListener = (event: MessageEvent) => {
+      const origin = event.origin.replace(/^https?:\/\//, '');
+
+      if (!this.config.origin_white_list.includes(origin)) return;
+
+      // 授权成功
+      if (event.data?.action === 'status') {
+        window.removeEventListener('message', messageListener);
+        if (event.data?.status === 'success') {
+          this.auth_status = true;
+          callback({
+            event: 'auth',
+            status: event.data?.status,
+            data: JSON.parse(event.data.data)
+          });
+        } else {
+          callback({
+            event: 'auth',
+            status: event.data?.status,
+            msg: event.data.msg
+          });
+        }
+      }
+    };
+
+    window.addEventListener('message', messageListener);
+  }
+
+  /**
    * 开启授权窗口
    * @param {*} callback
    */
   openAuthWindow(callback: (arg0: {
     event: string;
-    status: 'success' | 'failed' | 'error' | 'noLogin';
+    status: 'success' | 'failed' | 'error' | 'noLogin' | 'denied';
     data?: any;
     msg?: string;
   }) => void) {
@@ -73,12 +134,6 @@ class YunTowerAccountSDK {
 
     // 监听来自子页面的消息
     const messageListener = (event: MessageEvent) => {
-      if (this.config.type != 'window') callback({
-        event: 'error',
-        status: 'error',
-        msg: '仅[type]为[window]时支持回调方法'
-      });
-
       const origin = event.origin.replace(/^https?:\/\//, '');
 
       if (!this.config.origin_white_list.includes(origin)) return;
