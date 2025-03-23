@@ -93,7 +93,7 @@ class YunTowerAccountSDK {
           callback({
             event: 'auth',
             status: event.data?.status,
-            data: JSON.parse(event.data.data)
+            data: event.data.data
           });
         } else {
           callback({
@@ -146,7 +146,7 @@ class YunTowerAccountSDK {
           callback({
             event: 'auth',
             status: event.data?.status,
-            data: JSON.parse(event.data.data)
+            data:event.data.data
           });
         } else {
           callback({
