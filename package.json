@@ -1,15 +1,30 @@
 {
-  "name": "yuntower-account-web-sdk",
+  "name": "@yuntower/yuntower-account-web-sdk",
   "description": "YunTower Account Web SDK",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "private": false,
-  "author": "fish",
+  "author": "yuntower",
   "license": "Apache-2.0",
   "dependencies": {
     "typescript": "^5.5.4"
   },
-  "main": "index.js",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
