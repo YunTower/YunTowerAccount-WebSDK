@@ -4,32 +4,31 @@
  * @see https://github.com/YunTower/YunTowerAccount-WebSDK
  */
 class YunTowerAccountSDK {
-  private authStatus: boolean
-  private readonly config: SDKConfig
+  private authStatus: boolean;
+  private readonly config: SDKConfig;
   private static readonly ALLOWED_SCOPES: ScopeType[] = [
-    'user:profile',
-    'user:email',
-    'connect:codemao_uid',
-    'connect:pgaot_uid',
-    'connect:dao3_uid',
-  ]
-  private static readonly DEFAULT_AUTH_URL = 'http://localhost:5173'
+    "user:profile",
+    "user:email",
+    "connect:codemao_uid",
+    "connect:pgaot_uid",
+    "connect:dao3_uid",
+  ];
+  private static readonly DEFAULT_AUTH_URL = "//account.yuntower.com";
   private static readonly ALLOWED_ORIGINS = [
-    'account.yuntower.cn',
-    'account.yuntower.com',
-    'localhost:5173',
-  ]
+    "account.yuntower.cn",
+    "account.yuntower.com",
+  ];
 
-  constructor({ appid, scope = ['user:profile'] }: ConstructorParams) {
-    this.validateParams({ appid, scope })
+  constructor({ appid, scope = ["user:profile"] }: ConstructorParams) {
+    this.validateParams({ appid, scope });
 
-    this.authStatus = false
+    this.authStatus = false;
     this.config = {
       authUrl: YunTowerAccountSDK.DEFAULT_AUTH_URL,
       allowedOrigins: [...YunTowerAccountSDK.ALLOWED_ORIGINS],
       appid,
       scope,
-    }
+    };
   }
 
   /**
@@ -39,18 +38,20 @@ class YunTowerAccountSDK {
     appid,
     scope,
   }: {
-    appid: string
-    scope: ScopeType[]
+    appid: string;
+    scope: ScopeType[];
   }) {
     if (!appid || !scope?.length) {
-      throw new Error('[YunTowerAccountSDK] 参数缺失: appid 和 scope 为必填项')
+      throw new Error("[YunTowerAccountSDK] 参数缺失: appid 和 scope 为必填项");
     }
 
     for (const item of scope) {
       if (!YunTowerAccountSDK.ALLOWED_SCOPES.includes(item)) {
         throw new Error(
-          `[YunTowerAccountSDK] scope参数错误，目前只支持: ${YunTowerAccountSDK.ALLOWED_SCOPES.join(', ')}`,
-        )
+          `[YunTowerAccountSDK] scope参数错误，目前只支持: ${YunTowerAccountSDK.ALLOWED_SCOPES.join(
+            ", "
+          )}`
+        );
       }
     }
   }
@@ -58,30 +59,34 @@ class YunTowerAccountSDK {
   /**
    * 生成授权URL
    */
-  private buildAuthUrl(type: string, redirectUrl?: string, state?: string): string {
+  private buildAuthUrl(
+    type: string,
+    redirectUrl?: string,
+    state?: string
+  ): string {
     const params = new URLSearchParams({
       type,
       appid: this.config.appid,
-      scope: this.config.scope.join(','),
-    })
+      scope: this.config.scope.join(","),
+    });
 
     if (redirectUrl) {
-      params.append('redirect_url', redirectUrl)
+      params.append("redirect_url", redirectUrl);
     }
 
     if (state) {
-      params.append('state', state)
+      params.append("state", state);
     }
 
-    return `${this.config.authUrl}/auth/app?${params.toString()}`
+    return `${this.config.authUrl}/auth/app?${params.toString()}`;
   }
 
   /**
    * 验证消息来源
    */
   private isValidOrigin(origin: string): boolean {
-    const normalizedOrigin = origin.replace(/^https?:\/\//, '')
-    return this.config.allowedOrigins.includes(normalizedOrigin)
+    const normalizedOrigin = origin.replace(/^https?:\/\//, "");
+    return this.config.allowedOrigins.includes(normalizedOrigin);
   }
 
   /**
@@ -89,47 +94,49 @@ class YunTowerAccountSDK {
    */
   private handleAuthMessage(
     event: MessageEvent,
-    callback: (response: CallbackResponse) => void,
+    callback: (response: CallbackResponse) => void
   ): boolean {
     if (!this.isValidOrigin(event.origin)) {
-      return false
+      return false;
     }
 
-    if (event.data?.action === 'status') {
-      const { status, data, msg } = event.data
+    if (event.data?.action === "status") {
+      const { status, data, msg } = event.data;
 
-      if (status === 'success') {
-        this.authStatus = true
+      if (status === "success") {
+        this.authStatus = true;
       }
 
       callback({
-        event: 'auth',
+        event: "auth",
         status,
         data,
         msg,
-      })
-      return true
+      });
+      return true;
     }
 
-    return false
+    return false;
   }
 
   /**
    * 设置消息监听器
    */
-  private setupMessageListener(callback: (response: CallbackResponse) => void): () => void {
+  private setupMessageListener(
+    callback: (response: CallbackResponse) => void
+  ): () => void {
     const messageListener = (event: MessageEvent) => {
       if (this.handleAuthMessage(event, callback)) {
-        cleanup()
+        cleanup();
       }
-    }
+    };
 
     const cleanup = () => {
-      window.removeEventListener('message', messageListener)
-    }
+      window.removeEventListener("message", messageListener);
+    };
 
-    window.addEventListener('message', messageListener)
-    return cleanup
+    window.addEventListener("message", messageListener);
+    return cleanup;
   }
 
   /**
@@ -137,33 +144,35 @@ class YunTowerAccountSDK {
    * @param callback 授权回调函数
    */
   window(callback: (response: CallbackResponse) => void = () => {}): void {
-    const authUrl = this.buildAuthUrl('window')
-    const authWindow = window.open(authUrl, '_blank', 'width=500,height=600')
+    const authUrl = this.buildAuthUrl("window");
+    const authWindow = window.open(authUrl, "_blank", "width=500,height=600");
 
     if (!authWindow) {
-      throw new Error('[YunTowerAccountSDK] 无法打开授权窗口，可能被浏览器拦截')
+      throw new Error(
+        "[YunTowerAccountSDK] 无法打开授权窗口，可能被浏览器拦截"
+      );
     }
 
-    const cleanup = this.setupMessageListener(callback)
+    const cleanup = this.setupMessageListener(callback);
 
     // 监听窗口关闭状态
     const checkInterval = setInterval(() => {
       if (authWindow.closed) {
-        clearInterval(checkInterval)
-        cleanup()
+        clearInterval(checkInterval);
+        cleanup();
         callback({
-          event: 'closed',
-          status: 'success',
-        })
+          event: "closed",
+          status: "success",
+        });
       } else {
         // 发送状态检查消息
         try {
-          authWindow.postMessage({ action: 'status' }, '*')
+          authWindow.postMessage({ action: "status" }, "*");
         } catch {
           // 窗口可能已经关闭，忽略错误
         }
       }
-    }, 3000)
+    }, 3000);
   }
 
   /**
@@ -173,14 +182,16 @@ class YunTowerAccountSDK {
    */
   redirect(redirectUrl: string, state: string): void {
     if (!redirectUrl) {
-      throw new Error('[YunTowerAccountSDK] redirect模式需要提供redirectUrl参数')
+      throw new Error(
+        "[YunTowerAccountSDK] redirect模式需要提供redirectUrl参数"
+      );
     }
     if (!state) {
-      throw new Error('[YunTowerAccountSDK] redirect模式需要提供state参数')
+      throw new Error("[YunTowerAccountSDK] redirect模式需要提供state参数");
     }
 
-    const authUrl = this.buildAuthUrl('redirect', redirectUrl, state)
-    window.location.href = authUrl
+    const authUrl = this.buildAuthUrl("redirect", redirectUrl, state);
+    window.location.href = authUrl;
   }
 
   /**
@@ -190,47 +201,47 @@ class YunTowerAccountSDK {
    */
   iframe(
     elementId: string,
-    callback: (response: CallbackResponse) => void,
+    callback: (response: CallbackResponse) => void
   ): void {
-    const element = document.getElementById(elementId)
+    const element = document.getElementById(elementId);
     if (!element) {
-      throw new Error('[YunTowerAccountSDK] 未找到目标元素')
+      throw new Error("[YunTowerAccountSDK] 未找到目标元素");
     }
 
     // 如果元素不是iframe，创建一个iframe
-    let iframe: HTMLIFrameElement
-    if (element.tagName.toLowerCase() === 'iframe') {
-      iframe = element as HTMLIFrameElement
+    let iframe: HTMLIFrameElement;
+    if (element.tagName.toLowerCase() === "iframe") {
+      iframe = element as HTMLIFrameElement;
     } else {
-      iframe = document.createElement('iframe')
-      element.appendChild(iframe)
+      iframe = document.createElement("iframe");
+      element.appendChild(iframe);
     }
 
-    iframe.src = this.buildAuthUrl('iframe')
+    iframe.src = this.buildAuthUrl("iframe");
 
-    this.setupMessageListener(callback)
+    this.setupMessageListener(callback);
   }
 
   /**
    * 获取当前授权状态
    */
   getAuthStatus(): boolean {
-    return this.authStatus
+    return this.authStatus;
   }
 
   /**
    * 重置授权状态
    */
   resetAuthStatus(): void {
-    this.authStatus = false
+    this.authStatus = false;
   }
 
   /**
    * 获取当前配置
    */
   getConfig(): Readonly<SDKConfig> {
-    return Object.freeze({ ...this.config })
+    return Object.freeze({ ...this.config });
   }
 }
 
-export default YunTowerAccountSDK
+export default YunTowerAccountSDK;
