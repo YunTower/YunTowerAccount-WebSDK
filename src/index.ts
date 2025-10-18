@@ -1,8 +1,6 @@
 /**
  * 云塔账号通行证 WEB SDK
  * @author YunTower
- * @version 0.0.9
- * @license MIT
  * @see https://github.com/YunTower/YunTowerAccount-WebSDK
  */
 class YunTowerAccountSDK {
@@ -15,7 +13,6 @@ class YunTowerAccountSDK {
     'connect:pgaot_uid',
     'connect:dao3_uid',
   ]
-  private static readonly ALLOWED_TYPES: AuthType[] = ['window', 'redirect', 'iframe']
   private static readonly DEFAULT_AUTH_URL = 'http://localhost:5173'
   private static readonly ALLOWED_ORIGINS = [
     'account.yuntower.cn',
@@ -23,18 +20,15 @@ class YunTowerAccountSDK {
     'localhost:5173',
   ]
 
-  constructor({ type, appid, redirectUrl, state, scope = ['user:profile'] }: ConstructorParams) {
-    this.validateParams({ type, appid, scope })
+  constructor({ appid, scope = ['user:profile'] }: ConstructorParams) {
+    this.validateParams({ appid, scope })
 
     this.authStatus = false
     this.config = {
       authUrl: YunTowerAccountSDK.DEFAULT_AUTH_URL,
       allowedOrigins: [...YunTowerAccountSDK.ALLOWED_ORIGINS],
-      type,
       appid,
       scope,
-      redirectUrl,
-      state,
     }
   }
 
@@ -42,22 +36,14 @@ class YunTowerAccountSDK {
    * 验证构造函数参数
    */
   private validateParams({
-    type,
     appid,
     scope,
   }: {
-    type: AuthType
     appid: string
     scope: ScopeType[]
   }) {
-    if (!type || !appid || !scope?.length) {
-      throw new Error('[YunTowerAccountSDK] 参数缺失: type、appid 和 scope 为必填项')
-    }
-
-    if (!YunTowerAccountSDK.ALLOWED_TYPES.includes(type)) {
-      throw new Error(
-        `[YunTowerAccountSDK] type参数错误，支持的类型: ${YunTowerAccountSDK.ALLOWED_TYPES.join(', ')}`,
-      )
+    if (!appid || !scope?.length) {
+      throw new Error('[YunTowerAccountSDK] 参数缺失: appid 和 scope 为必填项')
     }
 
     for (const item of scope) {
@@ -72,19 +58,19 @@ class YunTowerAccountSDK {
   /**
    * 生成授权URL
    */
-  private buildAuthUrl(): string {
+  private buildAuthUrl(type: string, redirectUrl?: string, state?: string): string {
     const params = new URLSearchParams({
-      type: this.config.type,
+      type,
       appid: this.config.appid,
       scope: this.config.scope.join(','),
     })
 
-    if (this.config.redirectUrl) {
-      params.append('redirect_url', this.config.redirectUrl)
+    if (redirectUrl) {
+      params.append('redirect_url', redirectUrl)
     }
 
-    if (this.config.state) {
-      params.append('state', this.config.state)
+    if (state) {
+      params.append('state', state)
     }
 
     return `${this.config.authUrl}/auth/app?${params.toString()}`
@@ -147,76 +133,82 @@ class YunTowerAccountSDK {
   }
 
   /**
-   * 加载授权窗口 (iframe模式)
-   * @param elementId 目标元素的ID
-   * @param style 自定义样式
-   * @param callback 回调函数
+   * 弹窗授权模式
+   * @param callback 授权回调函数
    */
-  loadAuthWindow(
-    elementId: string,
-    style: string = '',
-    callback: (response: CallbackResponse) => void,
-  ): void {
-    if (this.config.type !== 'iframe') {
-      throw new Error('[YunTowerAccountSDK] 此方法仅支持iframe类型')
+  window(callback: (response: CallbackResponse) => void = () => {}): void {
+    const authUrl = this.buildAuthUrl('window')
+    const authWindow = window.open(authUrl, '_blank', 'width=500,height=600')
+
+    if (!authWindow) {
+      throw new Error('[YunTowerAccountSDK] 无法打开授权窗口，可能被浏览器拦截')
     }
 
-    const iframe = document.getElementById(elementId) as HTMLIFrameElement
-    if (!iframe) {
-      throw new Error('[YunTowerAccountSDK] 未找到目标元素')
-    }
+    const cleanup = this.setupMessageListener(callback)
 
-    const defaultStyle = 'height: 640px; width: 400px; border: unset; border-radius: 5px'
-    iframe.src = this.buildAuthUrl()
-    iframe.style.cssText = style || defaultStyle
-
-    this.setupMessageListener(callback)
+    // 监听窗口关闭状态
+    const checkInterval = setInterval(() => {
+      if (authWindow.closed) {
+        clearInterval(checkInterval)
+        cleanup()
+        callback({
+          event: 'closed',
+          status: 'success',
+        })
+      } else {
+        // 发送状态检查消息
+        try {
+          authWindow.postMessage({ action: 'status' }, '*')
+        } catch {
+          // 窗口可能已经关闭，忽略错误
+        }
+      }
+    }, 3000)
   }
 
   /**
-   * 开启授权窗口
-   * @param callback 回调函数
+   * 重定向授权模式
+   * @param redirectUrl 授权完成后的重定向URL
+   * @param state 状态参数，用于验证安全性
    */
-  openAuthWindow(callback: (response: CallbackResponse) => void = () => {}): void {
-    const authUrl = this.buildAuthUrl()
-
-    if (this.config.type === 'redirect') {
-      window.location.href = authUrl
-      return
+  redirect(redirectUrl: string, state: string): void {
+    if (!redirectUrl) {
+      throw new Error('[YunTowerAccountSDK] redirect模式需要提供redirectUrl参数')
+    }
+    if (!state) {
+      throw new Error('[YunTowerAccountSDK] redirect模式需要提供state参数')
     }
 
-    if (this.config.type === 'window') {
-      const authWindow = window.open(authUrl, '_blank', 'width=500,height=600')
+    const authUrl = this.buildAuthUrl('redirect', redirectUrl, state)
+    window.location.href = authUrl
+  }
 
-      if (!authWindow) {
-        throw new Error('[YunTowerAccountSDK] 无法打开授权窗口，可能被浏览器拦截')
-      }
-
-      const cleanup = this.setupMessageListener(callback)
-
-      // 监听窗口关闭状态
-      const checkInterval = setInterval(() => {
-        if (authWindow.closed) {
-          clearInterval(checkInterval)
-          cleanup()
-          callback({
-            event: 'closed',
-            status: 'success',
-          })
-        } else {
-          // 发送状态检查消息
-          try {
-            authWindow.postMessage({ action: 'status' }, '*')
-          } catch {
-            // 窗口可能已经关闭，忽略错误
-          }
-        }
-      }, 3000)
-
-      return
+  /**
+   * iframe嵌入授权模式
+   * @param elementId 目标元素的ID
+   * @param callback 授权回调函数
+   */
+  iframe(
+    elementId: string,
+    callback: (response: CallbackResponse) => void,
+  ): void {
+    const element = document.getElementById(elementId)
+    if (!element) {
+      throw new Error('[YunTowerAccountSDK] 未找到目标元素')
     }
 
-    throw new Error('[YunTowerAccountSDK] 不支持的授权类型')
+    // 如果元素不是iframe，创建一个iframe
+    let iframe: HTMLIFrameElement
+    if (element.tagName.toLowerCase() === 'iframe') {
+      iframe = element as HTMLIFrameElement
+    } else {
+      iframe = document.createElement('iframe')
+      element.appendChild(iframe)
+    }
+
+    iframe.src = this.buildAuthUrl('iframe')
+
+    this.setupMessageListener(callback)
   }
 
   /**
