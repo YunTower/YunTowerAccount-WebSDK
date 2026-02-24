@@ -146,26 +146,18 @@ class YunTowerAccountSDK {
 
   /**
    * 弹窗授权模式
-   * @param optionsOrCallback 配置（可选）或回调；传 { autoCloseOnFinish: false } 可关闭「成功/失败时自动关窗」
-   * @param callback 授权回调（当第一个参数为 options 时必传）
+   * @param options 可选配置，如 { autoCloseOnFinish: false } 关闭成功/失败时自动关窗
+   * @param callback 授权回调
    * @returns 返回 { close }，由接入方在需要时调用 close() 关闭授权窗口
    */
   window(
-    optionsOrCallback?:
-      | WindowOptions
-      | ((response: CallbackResponse) => void),
+    options?: WindowOptions,
     callback?: (response: CallbackResponse) => void
   ): WindowController {
-    const options: WindowOptions =
-      optionsOrCallback && typeof optionsOrCallback === "object"
-        ? optionsOrCallback
-        : {};
-    const userCallback: (response: CallbackResponse) => void =
-      typeof optionsOrCallback === "function"
-        ? optionsOrCallback
-        : callback ?? (() => {});
+    const opts = options ?? {};
+    const userCallback = callback ?? (() => {});
 
-    const autoCloseOnFinish = options.autoCloseOnFinish !== false;
+    const autoCloseOnFinish = opts?.autoCloseOnFinish !== false;
     const authUrl = this.buildAuthUrl("window");
     const authWindow = window.open(authUrl, "_blank", "width=500,height=600");
 

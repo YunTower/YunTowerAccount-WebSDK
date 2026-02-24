@@ -1,7 +1,7 @@
 {
   "name": "@yuntower/yuntower-account-web-sdk",
   "description": "YunTower Account Web SDK",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "private": false,
   "author": "yuntower",
   "license": "Apache-2.0",
