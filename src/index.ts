@@ -100,8 +100,13 @@ class YunTowerAccountSDK {
       return false;
     }
 
-    if (event.data?.action === "status") {
-      const { status, data, msg } = event.data;
+    const data = event.data;
+    const isStatusMessage =
+      data?.action === "status" || data?.type === "status";
+    if (isStatusMessage) {
+      const status = data.status;
+      const msg = data.msg;
+      const responseData = data.data;
 
       if (status === "success") {
         this.authStatus = true;
@@ -110,7 +115,7 @@ class YunTowerAccountSDK {
       callback({
         event: "auth",
         status,
-        data,
+        data: responseData,
         msg,
       });
       return true;
@@ -178,11 +183,17 @@ class YunTowerAccountSDK {
       }
       cleanup();
       if (autoCloseOnFinish && authWindow && !authWindow.closed) {
-        authWindow.close();
+        // 延后关窗，避免部分浏览器在 message 回调里同步 close 不生效
+        setTimeout(() => {
+          if (authWindow && !authWindow.closed) {
+            authWindow.close();
+          }
+        }, 0);
       }
       userCallback(response);
     });
 
+    // 轮询授权窗状态，间隔 1s 便于尽快收到授权页回复
     intervalId = setInterval(() => {
       if (authWindow.closed) {
         if (intervalId != null) {
@@ -201,7 +212,7 @@ class YunTowerAccountSDK {
           // 窗口可能已关闭，忽略
         }
       }
-    }, 3000);
+    }, 1000);
 
     return {
       close() {
