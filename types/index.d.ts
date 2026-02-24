@@ -14,6 +14,18 @@ interface CallbackResponse {
   msg?: string
 }
 
+/** window 模式可选配置 */
+interface WindowOptions {
+  /** 授权成功或失败时是否自动关闭授权窗口，默认 true */
+  autoCloseOnFinish?: boolean
+}
+
+/** window 模式返回值，由接入方控制关闭 */
+interface WindowController {
+  /** 关闭授权窗口 */
+  close(): void
+}
+
 interface SDKConfig {
   authUrl: string
   allowedOrigins: string[]

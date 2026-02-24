@@ -141,9 +141,26 @@ class YunTowerAccountSDK {
 
   /**
    * 弹窗授权模式
-   * @param callback 授权回调函数
+   * @param optionsOrCallback 配置（可选）或回调；传 { autoCloseOnFinish: false } 可关闭「成功/失败时自动关窗」
+   * @param callback 授权回调（当第一个参数为 options 时必传）
+   * @returns 返回 { close }，由接入方在需要时调用 close() 关闭授权窗口
    */
-  window(callback: (response: CallbackResponse) => void = () => {}): void {
+  window(
+    optionsOrCallback?:
+      | WindowOptions
+      | ((response: CallbackResponse) => void),
+    callback?: (response: CallbackResponse) => void
+  ): WindowController {
+    const options: WindowOptions =
+      optionsOrCallback && typeof optionsOrCallback === "object"
+        ? optionsOrCallback
+        : {};
+    const userCallback: (response: CallbackResponse) => void =
+      typeof optionsOrCallback === "function"
+        ? optionsOrCallback
+        : callback ?? (() => {});
+
+    const autoCloseOnFinish = options.autoCloseOnFinish !== false;
     const authUrl = this.buildAuthUrl("window");
     const authWindow = window.open(authUrl, "_blank", "width=500,height=600");
 
@@ -153,26 +170,51 @@ class YunTowerAccountSDK {
       );
     }
 
-    const cleanup = this.setupMessageListener(callback);
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const cleanup = this.setupMessageListener((response) => {
+      if (intervalId != null) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+      cleanup();
+      if (autoCloseOnFinish && authWindow && !authWindow.closed) {
+        authWindow.close();
+      }
+      userCallback(response);
+    });
 
-    // 监听窗口关闭状态
-    const checkInterval = setInterval(() => {
+    intervalId = setInterval(() => {
       if (authWindow.closed) {
-        clearInterval(checkInterval);
+        if (intervalId != null) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
         cleanup();
-        callback({
+        userCallback({
           event: "closed",
           status: "success",
         });
       } else {
-        // 发送状态检查消息
         try {
           authWindow.postMessage({ action: "status" }, "*");
         } catch {
-          // 窗口可能已经关闭，忽略错误
+          // 窗口可能已关闭，忽略
         }
       }
     }, 3000);
+
+    return {
+      close() {
+        if (intervalId != null) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        cleanup();
+        if (authWindow && !authWindow.closed) {
+          authWindow.close();
+        }
+      },
+    };
   }
 
   /**
